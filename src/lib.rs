@@ -4,6 +4,10 @@ extern crate actix_web;
 use actix_web::{middleware, web, App, HttpRequest, HttpServer, Result};
 use serde::Serialize;
 
+#[derive(Serialize)]
+struct IndexRespond{
+    message: String,
+}
 
 
 
@@ -34,9 +38,9 @@ pub struct MessageApp {
         pub fn run(&self) -> std::io::Result<()> {
         println!("Starting http server: 127.0.0.1:{}", self.port);
         HttpServer::new(move || {
-        App::new()
-        .wrap(middleware::Logger::default())
-        .service(FF)
+            App::new()
+            .wrap(middleware::Logger::default())
+            .service(FF)
     })
         .bind(("127.0.0.1", self.port))?
         .workers(8)
