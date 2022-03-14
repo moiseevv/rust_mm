@@ -5,12 +5,12 @@ use actix_web::{middleware, web, App, HttpRequest, HttpServer, Result};
 use serde::Serialize;
 
 #[derive(Serialize)]
-struct IndexRespond{
+struct IndexResponse{
     message: String,
 }
 
 #[get("/")]
-fn index(req:HttpRequest)->Result<web::Json<IndexRespond>>{
+fn index(req:HttpRequest)->Result<web::Json<IndexResponse>>{
     let hello = req
         .headers()
         .get("hello")
