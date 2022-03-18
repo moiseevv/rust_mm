@@ -1,11 +1,16 @@
 #[macro_use]
 extern crate actix_web;
 
-use actix_web::{middleware, web, App, HttpRequest, HttpServer, Result};
+use actix_web::{
+    error::{Error, InternalError, JsonPayloadError},
+    middleware, web, App, HttpRequest, HttpServer, Result
+};
 use serde::{Deserialize, Serialize};
 use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+
+const LOG_FORMAT: &'static str = r#""%r" %s %b "%{User-Agent}i" %D"#;
 
 static SERVER_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -34,6 +39,12 @@ struct PostResponse{
     message: String,
 }
 
+#[derive(Serialize)]
+struct PostError{
+    server_id: usize,
+    request_count: usize, 
+    error: String, 
+}
 #[get("/")]
 fn index(state: web::Data<AppState>)->Result<web::Json<IndexResponse>>{
     let request_count = state.request_count.get() +1;
@@ -75,6 +86,20 @@ fn clear(state: web::Data<AppState>) -> Result<web::Json<IndexResponse>>
     }))
 }
 
+
+fn post_error(err: JsonPayloadError, req: &HttpRequest) -> Error{
+    let extns = req.extensions();
+    let state = extns.get::<web::Date<AppState>>().upwrap();
+    let request_count = state.request_count.get()+1;
+    state.request_count.set(request_count);
+    let post_error = PostError{
+        server_id: state.server_id,
+        request_count,
+        error: format!("{}",err),
+    };
+    InternalError::from_response(err,HttpResponse::BadRequest().json(post_error)).into()
+}
+
 pub struct MessageApp {
     port: u16,
     }
@@ -94,12 +119,16 @@ pub struct MessageApp {
                 request_count: Cell::new(0),
                 messages: messages.clone(),
             })
-            .wrap(middleware::Logger::default())
+            .wrap(middleware::Logger::new(LOG_FORMAT))
             .service(index)
             .service(
                 web::resource("/send")
-                .data(web::JsonConfig::default().limit(4096))
-                .route(web::post().to(post))
+                .data(
+                web::JsonConfig::default()
+                    .limit(4096)
+                    .error_handler(post_error),
+                )
+                .route(web::post().to(post)),
             )
             .service(clear)
     })
