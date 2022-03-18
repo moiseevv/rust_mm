@@ -52,7 +52,7 @@ fn post(msg: web::Json<PostInput>, state: web::Data<AppState>) -> Result<web::Js
     let request_counter = state.request_count.get()+1;
     state.request_count.set(request_counter);
     let mut ms = state.messages.lock().unwrap();
-    ms.push(msg.massage.clone());
+    ms.push(msg.message.clone());
 
     Ok(web::Json(PostResponse{
         server_id: state.server_id,
@@ -74,18 +74,6 @@ fn clear(state: web::Data<AppState>) -> Result<web::Json<IndexResponse>>
         message: vec![],
     }))
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 pub struct MessageApp {
     port: u16,
@@ -111,7 +99,7 @@ pub struct MessageApp {
             .service(
                 web::resource("/send")
                 .data(web::JsonConfig::default().limit(4096))
-                .route(web::post.to(post))
+                .route(web::post().to(post))
             )
             .service(clear)
     })
