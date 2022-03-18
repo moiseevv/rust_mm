@@ -24,7 +24,7 @@ struct IndexResponse{
 
 #[derive(Deserialize)]
 struct PostInput{
-    massage: String,
+    message: String,
 }
 
 #[derive(Serialize)]
