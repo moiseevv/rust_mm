@@ -47,7 +47,6 @@ fn index(state: web::Data<AppState>)->Result<web::Json<IndexResponse>>{
         message: ms.clone(),
     }))
 }
-
 fn post(msg: web::Json<PostInput>, state: web::Data<AppState>) -> Result<web::Json<PostResponse>>{
     let request_counter = state.request_count.get()+1;
     state.request_count.set(request_counter);
