@@ -2,7 +2,7 @@
 extern crate actix_web;
 
 use actix_web::{middleware, web, App, HttpRequest, HttpServer, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -22,6 +22,18 @@ struct IndexResponse{
 }
 
 
+#[derive(Deserialize)]
+struct PostInput{
+    massage: String,
+}
+
+#[derive(Serialize)]
+struct PostResponse{
+    server_id: usize,
+    request_count: usize,
+    message: String,
+}
+
 #[get("/")]
 fn index(state: web::Data<AppState>)->Result<web::Json<IndexResponse>>{
     let request_count = state.request_count.get() +1;
@@ -35,6 +47,46 @@ fn index(state: web::Data<AppState>)->Result<web::Json<IndexResponse>>{
         message: ms.clone(),
     }))
 }
+
+fn post(msg: web::Json<PostInput>, state: web::Data<AppState>) -> Result<web::Json<PostResponse>>{
+    let request_counter = state.request_count.get()+1;
+    state.request_count.set(request_counter)
+    let mut ms = state.messages.lock().unwrap();
+    ms.push(msg.massage.clone())
+
+    Ok(web::Json(PostResponse{
+        server_id: state.server_id,
+        request_count,
+        message: msg.message.clone(),
+    }))
+}
+#[post("/clear")]
+fn clear(state: web::Data<AppState>) -> Result<web::Json<IndexResponse>>
+{
+    let request_count = state.request_count.get() + 1;
+    state.request_count.set(request_count);
+    let mut ms = state.messages.lock().unwrap();
+    ms.clear();
+
+    Ok(web::Json(IndexResponse{
+        server_id: state.server_id,
+        request_count,
+        message: vec![],
+    }))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 pub struct MessageApp {
     port: u16,
     }
@@ -56,6 +108,12 @@ pub struct MessageApp {
             })
             .wrap(middleware::Logger::default())
             .service(index)
+            .service(
+                web::resource("/send")
+                .data(web::JsonConfig::default().limit(4096))
+                .route(web::post.to(post))
+            )
+            .service(clear)
     })
         .bind(("127.0.0.1", self.port))?
         .workers(8)
