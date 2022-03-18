@@ -50,7 +50,7 @@ fn index(state: web::Data<AppState>)->Result<web::Json<IndexResponse>>{
 
 fn post(msg: web::Json<PostInput>, state: web::Data<AppState>) -> Result<web::Json<PostResponse>>{
     let request_count = state.request_count.get()+1;
-    state.request_count.set(request_counter);
+    state.request_count.set(request_count);
     let mut ms = state.messages.lock().unwrap();
     ms.push(msg.message.clone());
 
